@@ -37,8 +37,12 @@ public class SnowflakeConfig {
                 props.privateKeyPassphrase()
         );
 
+        String url = String.format(
+                "jdbc:snowflake://%s.snowflakecomputing.com/?JDBC_QUERY_RESULT_FORMAT=JSON",
+                props.account());
+
         SnowflakeBasicDataSource ds = new SnowflakeBasicDataSource();
-        ds.setUrl(String.format("jdbc:snowflake://%s.snowflakecomputing.com/", props.account()));
+        ds.setUrl(url);
         ds.setUser(props.user());
         ds.setPrivateKey(privateKey);
         ds.setDatabaseName(props.database());

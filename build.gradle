@@ -19,7 +19,19 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'net.snowflake:snowflake-jdbc:3.18.0'
+    implementation 'net.snowflake:snowflake-jdbc:3.20.0'
     implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
     implementation 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+}
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs += [
+        '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
+    ]
+}
+
+bootRun {
+    jvmArgs += [
+        '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
+    ]
 }
