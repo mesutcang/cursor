@@ -1,6 +1,7 @@
 package com.example.snowflake.service;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -35,28 +36,51 @@ public class SnowflakeService {
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
-            ResultSetMetaData meta = rs.getMetaData();
-            int columnCount = meta.getColumnCount();
-
-            List<String> columns = new ArrayList<>(columnCount);
-            for (int i = 1; i <= columnCount; i++) {
-                columns.add(meta.getColumnLabel(i));
-            }
-
-            List<Map<String, Object>> rows = new ArrayList<>();
-            while (rs.next()) {
-                Map<String, Object> row = new LinkedHashMap<>();
-                for (int i = 1; i <= columnCount; i++) {
-                    row.put(columns.get(i - 1), rs.getObject(i));
-                }
-                rows.add(row);
-            }
-
-            log.info("Query returned {} row(s)", rows.size());
-            return new QueryResponse(sql, columns, rows, rows.size());
+            return mapResultSet(sql, rs);
 
         } catch (SQLException e) {
             throw new RuntimeException("Query execution failed: " + e.getMessage(), e);
         }
+    }
+
+    public QueryResponse executeQuery(String sql, Object... params) {
+        log.info("Executing parameterized query: {}", sql);
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            for (int i = 0; i < params.length; i++) {
+                ps.setObject(i + 1, params[i]);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return mapResultSet(sql, rs);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Query execution failed: " + e.getMessage(), e);
+        }
+    }
+
+    private QueryResponse mapResultSet(String sql, ResultSet rs) throws SQLException {
+        ResultSetMetaData meta = rs.getMetaData();
+        int columnCount = meta.getColumnCount();
+
+        List<String> columns = new ArrayList<>(columnCount);
+        for (int i = 1; i <= columnCount; i++) {
+            columns.add(meta.getColumnLabel(i));
+        }
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+        while (rs.next()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            for (int i = 1; i <= columnCount; i++) {
+                row.put(columns.get(i - 1), rs.getObject(i));
+            }
+            rows.add(row);
+        }
+
+        log.info("Query returned {} row(s)", rows.size());
+        return new QueryResponse(sql, columns, rows, rows.size());
     }
 }
