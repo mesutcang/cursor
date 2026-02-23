@@ -13,6 +13,8 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
+import com.example.snowflake.model.EprivacyConsent;
+import com.example.snowflake.model.EprivacyConsentResponse;
 import com.example.snowflake.model.QueryResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +62,52 @@ public class SnowflakeService {
         } catch (SQLException e) {
             throw new RuntimeException("Query execution failed: " + e.getMessage(), e);
         }
+    }
+
+    public <T> List<T> executeQuery(String sql, RowMapper<T> rowMapper, Object... params) {
+        log.info("Executing typed query: {}", sql);
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            for (int i = 0; i < params.length; i++) {
+                ps.setObject(i + 1, params[i]);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                List<T> results = new ArrayList<>();
+                while (rs.next()) {
+                    results.add(rowMapper.map(rs));
+                }
+                log.info("Query returned {} row(s)", results.size());
+                return results;
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Query execution failed: " + e.getMessage(), e);
+        }
+    }
+
+    public EprivacyConsentResponse findEprivacyConsentByVin(String vin) {
+        List<EprivacyConsent> consents = executeQuery(
+                "SELECT VIN, CONSENT_ID, CONSENT_TYPE, STATUS, "
+                + "CREATED_AT, UPDATED_AT, EXPIRES_AT "
+                + "FROM ACL_EPRIVACY_CONSENT.EPRIVACY_CONSENT WHERE VIN = ?",
+                rs -> new EprivacyConsent(
+                        rs.getString("VIN"),
+                        rs.getString("CONSENT_ID"),
+                        rs.getString("CONSENT_TYPE"),
+                        rs.getString("STATUS"),
+                        rs.getTimestamp("CREATED_AT") != null
+                                ? rs.getTimestamp("CREATED_AT").toLocalDateTime() : null,
+                        rs.getTimestamp("UPDATED_AT") != null
+                                ? rs.getTimestamp("UPDATED_AT").toLocalDateTime() : null,
+                        rs.getTimestamp("EXPIRES_AT") != null
+                                ? rs.getTimestamp("EXPIRES_AT").toLocalDateTime() : null
+                ),
+                vin);
+
+        return new EprivacyConsentResponse(vin, consents, consents.size());
     }
 
     private QueryResponse mapResultSet(String sql, ResultSet rs) throws SQLException {

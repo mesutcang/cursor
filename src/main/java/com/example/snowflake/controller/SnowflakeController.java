@@ -1,5 +1,6 @@
 package com.example.snowflake.controller;
 
+import com.example.snowflake.model.EprivacyConsentResponse;
 import com.example.snowflake.model.QueryRequest;
 import com.example.snowflake.model.QueryResponse;
 import com.example.snowflake.service.SnowflakeService;
@@ -78,12 +79,10 @@ public class SnowflakeController {
      * Returns 404 if no rows are found.
      */
     @GetMapping("/eprivacy-consent/{vin}")
-    public ResponseEntity<QueryResponse> getEprivacyConsentByVin(@PathVariable String vin) {
-        QueryResponse response = snowflakeService.executeQuery(
-                "SELECT * FROM ACL_EPRIVACY_CONSENT.EPRIVACY_CONSENT WHERE VIN = ?",
-                vin);
+    public ResponseEntity<EprivacyConsentResponse> getEprivacyConsentByVin(@PathVariable String vin) {
+        EprivacyConsentResponse response = snowflakeService.findEprivacyConsentByVin(vin);
 
-        if (response.rowCount() == 0) {
+        if (response.totalRecords() == 0) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(response);
