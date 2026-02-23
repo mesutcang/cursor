@@ -89,25 +89,39 @@ public class SnowflakeService {
     }
 
     public EprivacyConsentResponse findEprivacyConsentByVin(String vin) {
-        List<EprivacyConsent> consents = executeQuery(
-                "SELECT VIN, CONSENT_ID, CONSENT_TYPE, STATUS, "
-                + "CREATED_AT, UPDATED_AT, EXPIRES_AT "
-                + "FROM ACL_EPRIVACY_CONSENT.EPRIVACY_CONSENT WHERE VIN = ?",
-                rs -> new EprivacyConsent(
-                        rs.getString("VIN"),
-                        rs.getString("CONSENT_ID"),
-                        rs.getString("CONSENT_TYPE"),
-                        rs.getString("STATUS"),
-                        rs.getTimestamp("CREATED_AT") != null
-                                ? rs.getTimestamp("CREATED_AT").toLocalDateTime() : null,
-                        rs.getTimestamp("UPDATED_AT") != null
-                                ? rs.getTimestamp("UPDATED_AT").toLocalDateTime() : null,
-                        rs.getTimestamp("EXPIRES_AT") != null
-                                ? rs.getTimestamp("EXPIRES_AT").toLocalDateTime() : null
-                ),
-                vin);
+        String sql = "SELECT * FROM ACL_EPRIVACY_CONSENT.EPRIVACY_CONSENT WHERE VIN = ?";
+        log.info("Executing eprivacy consent query for VIN: {}", vin);
 
-        return new EprivacyConsentResponse(vin, consents, consents.size());
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, vin);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                ResultSetMetaData meta = rs.getMetaData();
+                int columnCount = meta.getColumnCount();
+
+                List<String> columns = new ArrayList<>(columnCount);
+                for (int i = 1; i <= columnCount; i++) {
+                    columns.add(meta.getColumnLabel(i));
+                }
+
+                List<EprivacyConsent> consents = new ArrayList<>();
+                while (rs.next()) {
+                    Map<String, Object> fields = new LinkedHashMap<>();
+                    for (int i = 1; i <= columnCount; i++) {
+                        fields.put(columns.get(i - 1), rs.getObject(i));
+                    }
+                    consents.add(new EprivacyConsent(fields));
+                }
+
+                log.info("Query returned {} row(s) for VIN: {}", consents.size(), vin);
+                return new EprivacyConsentResponse(vin, columns, consents, consents.size());
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Query execution failed: " + e.getMessage(), e);
+        }
     }
 
     private QueryResponse mapResultSet(String sql, ResultSet rs) throws SQLException {

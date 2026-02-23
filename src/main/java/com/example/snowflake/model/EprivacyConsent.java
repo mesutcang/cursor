@@ -1,13 +1,5 @@
 package com.example.snowflake.model;
 
-import java.time.LocalDateTime;
+import java.util.Map;
 
-public record EprivacyConsent(
-        String vin,
-        String consentId,
-        String consentType,
-        String status,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt,
-        LocalDateTime expiresAt
-) {}
+public record EprivacyConsent(Map<String, Object> fields) {}
