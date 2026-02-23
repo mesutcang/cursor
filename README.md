@@ -1,11 +1,10 @@
-# Java Snowflake Client
+# Java Snowflake Client (Spring Boot)
 
-A Java client that connects to Snowflake using **private key pair authentication** (key pair auth), executes sample queries, and prints the results.
+A Spring Boot REST API that connects to Snowflake using **private key pair authentication** and exposes query endpoints.
 
 ## Prerequisites
 
 - **Java 21+**
-- **Maven 3.8+**
 - A Snowflake account with key pair authentication configured for your user
   ([Snowflake docs](https://docs.snowflake.com/en/user-guide/key-pair-auth))
 
@@ -27,64 +26,125 @@ ALTER USER your_user SET RSA_PUBLIC_KEY='<paste public key without header/footer
 
 ## Configuration
 
-Copy the template and fill in your connection details:
+All settings live in `src/main/resources/application.yml` and can be overridden with environment variables:
+
+| Property                        | Env Variable                      | Description                                              |
+|---------------------------------|-----------------------------------|----------------------------------------------------------|
+| `snowflake.account`             | `SNOWFLAKE_ACCOUNT`               | Snowflake account identifier (e.g. `xy12345.us-east-1`)  |
+| `snowflake.user`                | `SNOWFLAKE_USER`                  | Snowflake login user                                     |
+| `snowflake.database`            | `SNOWFLAKE_DATABASE`              | Default database                                         |
+| `snowflake.schema`              | `SNOWFLAKE_SCHEMA`                | Default schema (defaults to `PUBLIC`)                    |
+| `snowflake.warehouse`           | `SNOWFLAKE_WAREHOUSE`             | Virtual warehouse                                        |
+| `snowflake.role`                | `SNOWFLAKE_ROLE`                  | Role (optional)                                          |
+| `snowflake.private-key-path`    | `SNOWFLAKE_PRIVATE_KEY_PATH`      | Absolute path to the PEM private key file                |
+| `snowflake.private-key-passphrase` | `SNOWFLAKE_PRIVATE_KEY_PASSPHRASE` | Passphrase (leave blank if key is unencrypted)         |
+
+### Quick start with environment variables
 
 ```bash
-cp src/main/resources/config.properties.template src/main/resources/config.properties
+export SNOWFLAKE_ACCOUNT=xy12345.us-east-1
+export SNOWFLAKE_USER=my_user
+export SNOWFLAKE_DATABASE=my_db
+export SNOWFLAKE_WAREHOUSE=my_wh
+export SNOWFLAKE_PRIVATE_KEY_PATH=/path/to/rsa_key.p8
 ```
-
-Edit `src/main/resources/config.properties`:
-
-| Property                 | Description                                        |
-|--------------------------|----------------------------------------------------|
-| `account`                | Snowflake account identifier (e.g. `xy12345.us-east-1`) |
-| `user`                   | Snowflake login user                               |
-| `database`               | Default database                                   |
-| `schema`                 | Default schema                                     |
-| `warehouse`              | Virtual warehouse                                  |
-| `role`                   | Role (optional)                                    |
-| `private_key_path`       | Absolute path to the PEM private key file          |
-| `private_key_passphrase` | Passphrase (leave blank if key is unencrypted)     |
 
 ## Build
 
 ```bash
-mvn clean package -q
+./gradlew build -x test
 ```
-
-This produces a fat JAR in `target/snowflake-client-1.0.0.jar`.
 
 ## Run
 
-Using the classpath config:
+```bash
+./gradlew bootRun
+```
+
+Or run the fat JAR directly:
 
 ```bash
-java -jar target/snowflake-client-1.0.0.jar
+java -jar build/libs/snowflake-client-1.0.0.jar
 ```
 
-Or pass an external config file:
+The server starts on **http://localhost:8080**.
+
+## REST API Endpoints
+
+### GET /api/snowflake/version
+
+Returns the current Snowflake server version.
 
 ```bash
-java -jar target/snowflake-client-1.0.0.jar /path/to/config.properties
+curl http://localhost:8080/api/snowflake/version
 ```
 
-## Sample Output
-
-```
-Loaded config from classpath.
-Connecting to Snowflake account: xy12345.us-east-1
-Connected successfully.
-
-Executing query:
-  SELECT CURRENT_VERSION() AS snowflake_version
-
-SNOWFLAKE_VERSION
---------------------
-8.30.1
-
-1 row(s) returned.
+```json
+{
+  "sql": "SELECT CURRENT_VERSION() AS snowflake_version",
+  "columns": ["snowflake_version"],
+  "rows": [{ "snowflake_version": "8.30.1" }],
+  "rowCount": 1
+}
 ```
 
-## Adding Custom Queries
+### GET /api/snowflake/current-session
 
-Open `SnowflakeClient.java` and add calls to `client.executeQuery(conn, "YOUR SQL HERE")` inside the `main` method.
+Returns metadata about the current session (user, role, database, schema, warehouse).
+
+```bash
+curl http://localhost:8080/api/snowflake/current-session
+```
+
+### GET /api/snowflake/tables?database=MY_DB&schema=PUBLIC
+
+Lists tables in the specified database and schema.
+
+```bash
+curl "http://localhost:8080/api/snowflake/tables?database=MY_DB&schema=PUBLIC"
+```
+
+### POST /api/snowflake/query
+
+Execute an arbitrary SQL query.
+
+```bash
+curl -X POST http://localhost:8080/api/snowflake/query \
+  -H "Content-Type: application/json" \
+  -d '{"sql": "SELECT * FROM my_table LIMIT 10"}'
+```
+
+```json
+{
+  "sql": "SELECT * FROM my_table LIMIT 10",
+  "columns": ["id", "name", "created_at"],
+  "rows": [
+    { "id": 1, "name": "Alice", "created_at": "2025-01-01" }
+  ],
+  "rowCount": 1
+}
+```
+
+## Project Structure
+
+```
+├── build.gradle                 # Gradle build with Spring Boot & Snowflake JDBC
+├── settings.gradle
+├── gradlew / gradlew.bat        # Gradle wrapper
+└── src/main/
+    ├── java/com/example/snowflake/
+    │   ├── SnowflakeClientApplication.java      # Spring Boot entry point
+    │   ├── config/
+    │   │   ├── SnowflakeConfig.java             # DataSource bean with private key auth
+    │   │   └── SnowflakeProperties.java         # Typed config properties
+    │   ├── controller/
+    │   │   ├── SnowflakeController.java         # REST endpoints
+    │   │   └── GlobalExceptionHandler.java      # Error handling
+    │   ├── model/
+    │   │   ├── QueryRequest.java                # Request body DTO
+    │   │   └── QueryResponse.java               # Response DTO
+    │   └── service/
+    │       └── SnowflakeService.java            # Query execution logic
+    └── resources/
+        └── application.yml                      # App & Snowflake configuration
+```

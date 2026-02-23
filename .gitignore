@@ -1,5 +1,7 @@
-# Build output
-target/
+# Gradle
+build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
 
 # IDE files
 .idea/
@@ -8,9 +10,6 @@ target/
 .project
 .classpath
 .settings/
-
-# Sensitive config (contains credentials / key paths)
-src/main/resources/config.properties
 
 # Private keys
 *.p8
