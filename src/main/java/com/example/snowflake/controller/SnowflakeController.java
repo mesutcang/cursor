@@ -1,12 +1,9 @@
 package com.example.snowflake.controller;
 
-import java.util.Map;
-
 import com.example.snowflake.model.EprivacyConsentResponse;
 import com.example.snowflake.model.QueryRequest;
 import com.example.snowflake.model.QueryResponse;
 import com.example.snowflake.service.SnowflakeService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -79,17 +76,14 @@ public class SnowflakeController {
     /**
      * GET /api/snowflake/eprivacy-consent/{vin}
      * Looks up e-privacy consent records for the given VIN.
-     * Returns 404 with a message if no rows are found.
+     * Returns 404 if no rows are found.
      */
     @GetMapping("/eprivacy-consent/{vin}")
-    public ResponseEntity<?> getEprivacyConsentByVin(@PathVariable String vin) {
+    public ResponseEntity<EprivacyConsentResponse> getEprivacyConsentByVin(@PathVariable String vin) {
         EprivacyConsentResponse response = snowflakeService.findEprivacyConsentByVin(vin);
 
         if (response.totalRecords() == 0) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
-                    "status", 404,
-                    "message", "No e-privacy consent records found for VIN: " + vin
-            ));
+            return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(response);
     }
