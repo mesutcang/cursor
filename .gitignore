@@ -1,0 +1,18 @@
+# Build output
+target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# Sensitive config (contains credentials / key paths)
+src/main/resources/config.properties
+
+# Private keys
+*.p8
+*.pem
+*.key
