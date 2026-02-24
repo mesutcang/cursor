@@ -37,20 +37,20 @@ public class SnowflakeConfig {
                 props.privateKeyPassphrase()
         );
 
-        String url = String.format(
+        StringBuilder url = new StringBuilder(String.format(
                 "jdbc:snowflake://%s.snowflakecomputing.com/?JDBC_QUERY_RESULT_FORMAT=JSON",
-                props.account());
+                props.account()));
+        url.append("&db=").append(props.database());
+        url.append("&schema=").append(props.schema());
+        url.append("&warehouse=").append(props.warehouse());
+        if (props.role() != null && !props.role().isBlank()) {
+            url.append("&role=").append(props.role());
+        }
 
         SnowflakeBasicDataSource ds = new SnowflakeBasicDataSource();
-        ds.setUrl(url);
+        ds.setUrl(url.toString());
         ds.setUser(props.user());
         ds.setPrivateKey(privateKey);
-        ds.setDatabaseName(props.database());
-        ds.setSchema(props.schema());
-        ds.setWarehouse(props.warehouse());
-        if (props.role() != null && !props.role().isBlank()) {
-            ds.setRole(props.role());
-        }
 
         return ds;
     }
