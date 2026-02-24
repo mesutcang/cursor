@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+snowflake:
+  account: ${SNOWFLAKE_ACCOUNT:YOUR_ACCOUNT}
+  user: ${SNOWFLAKE_USER:YOUR_USER}
+  database: ${SNOWFLAKE_DATABASE:YOUR_DATABASE}
+  schema: ${SNOWFLAKE_SCHEMA:PUBLIC}
+  warehouse: ${SNOWFLAKE_WAREHOUSE:YOUR_WAREHOUSE}
+  role: ${SNOWFLAKE_ROLE:}
+  private-key-path: ${SNOWFLAKE_PRIVATE_KEY_PATH:/path/to/rsa_key.p8}
+  private-key-passphrase: ${SNOWFLAKE_PRIVATE_KEY_PASSPHRASE:}
+
+spring:
+  jpa:
+    database-platform: com.example.snowflake.config.SnowflakeDialect
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
